@@ -83,6 +83,7 @@ object Form1: TForm1
       ReadOnly = True
       ScrollBars = ssBoth
       TabOrder = 0
+      Visible = False
       WordWrap = False
     end
     object Panel2: TPanel
