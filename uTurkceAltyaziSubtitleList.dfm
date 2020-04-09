@@ -70,9 +70,8 @@ object frmTurkceAltyaziSubtitleList: TfrmTurkceAltyaziSubtitleList
   object Panel1: TPanel
     Left = 440
     Top = 72
-    Width = 185
-    Height = 89
-    Caption = 'Panel1'
+    Width = 41
+    Height = 33
     DoubleBuffered = True
     ParentDoubleBuffered = False
     TabOrder = 2

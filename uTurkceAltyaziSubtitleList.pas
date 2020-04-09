@@ -223,6 +223,7 @@ begin
         end;
         FList.Free;
     end;
+    setStatus('');
 end;
 
 end.

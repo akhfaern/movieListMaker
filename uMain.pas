@@ -27,8 +27,6 @@ type
         DirectoryListBox1: TDirectoryListBox;
         N2: TMenuItem;
         GetSubtitle1: TMenuItem;
-        SslContext2: TSslContext;
-        SslHttpCli2: TSslHttpCli;
         procedure btnFindMoviesClick(Sender: TObject);
         procedure btnDeleteFileClick(Sender: TObject);
         procedure ListView1ColumnClick(Sender: TObject; Column: TListColumn);
@@ -37,9 +35,7 @@ type
         procedure SslHttpCli1DocBegin(Sender: TObject);
         procedure SslHttpCli1DocEnd(Sender: TObject);
         procedure btnGetIMDBClick(Sender: TObject);
-    procedure GetSubtitle1Click(Sender: TObject);
-    procedure SslHttpCli2DocBegin(Sender: TObject);
-    procedure SslHttpCli2DocEnd(Sender: TObject);
+        procedure GetSubtitle1Click(Sender: TObject);
     private
         { Private declarations }
     public
@@ -55,7 +51,6 @@ type
         function isMovie(FFileName: string): Boolean;
         function getIMDB(FMovieName: string): string;
         function parseIMDBJSON(FJSON: TJSONObject): string;
-        function parseTurkceAltyaziJSON(FJSONString: string): string;
         function cleanDoubleQutoes(FStr: string): string;
     end;
 
@@ -75,7 +70,6 @@ var
     SortedColumn: Integer;
     FIMDBMovieName: string;
     FIMDBMovieListIndex: Integer;
-    FTurkceAltyaziCount: Integer = 100;
     FDownloadFolder: string;
 
 implementation
@@ -84,17 +78,6 @@ implementation
 
 uses uSelectIMDBId, uSelectMovieFromTurkceAltyazi;
 { TForm1 }
-
-function CTime: Int64;
-var
-    SystemTime: TSystemTime;
-    NowUTC: TDateTime;
-begin
-    GetSystemTime(SystemTime);
-    with SystemTime do
-        NowUTC := EncodeDateTime(wYear, wMonth, wDay, wHour, wMinute, wSecond, wMilliseconds);
-    Result := DateTimeToUnix(NowUTC);
-end;
 
 procedure TForm1.addLog(FLog: string);
 begin
@@ -293,36 +276,6 @@ begin
             frmSelectIMDBId.lvIMDB.Items[FLastCheckedIndex].SubItems[2];
 end;
 
-function TForm1.parseTurkceAltyaziJSON(FJSONString: string): string;
-var
-    FMovies: TJSONValue;
-    FMovieList: TJSONArray;
-    vJSONValue: TJSONValue;
-    vJSONObject: TJSONObject;
-    FMovieName, FYear, FImdbId, FUrl: string;
-    FItem: TListItem;
-begin
-    FMovies := TJSONObject.ParseJSONValue(FJSONString);
-    addLog(FMovies.ToString);
-    FMovieList := FMovies as TJSONArray;
-    for vJSONValue in FMovieList do
-    begin
-        vJSONObject := vJSONValue as TJSONObject;
-        FMovieName := cleanDoubleQutoes(vJSONObject.GetValue('isim').ToString);
-        FYear := cleanDoubleQutoes(vJSONObject.GetValue('yil').ToString);
-        FImdbId := cleanDoubleQutoes(vJSONObject.GetValue('imdbid').ToString);
-        FUrl := cleanDoubleQutoes(vJSONObject.GetValue('url').ToString);
-        FItem := frmTurkceAltyaziMovieSelect.lvTurkceAltyaziMovieList.Items.Add;
-        FItem.Caption := IntToStr(frmTurkceAltyaziMovieSelect.
-            lvTurkceAltyaziMovieList.Items.Count);
-        FItem.SubItems.Add(FMovieName);
-        FItem.SubItems.Add(FYear);
-        FItem.SubItems.Add(FImdbId);
-        FItem.SubItems.Add(FUrl);
-    end;
-    frmTurkceAltyaziMovieSelect.ShowModal;
-end;
-
 procedure TForm1.showStatus(FStatus: string);
 begin
     StatusBar1.Panels[0].Text := FStatus;
@@ -348,29 +301,6 @@ begin
         FList.LoadFromFile(SslHttpCli1.DocName);
         FJSONObject.Parse(BytesOf(FList.Text), 0);
         parseIMDBJSON(FJSONObject);
-        FList.Free;
-    end;
-end;
-
-procedure TForm1.SslHttpCli2DocBegin(Sender: TObject);
-begin
-    if FileExists(SslHttpCli2.DocName) then
-        DeleteFile(SslHttpCli2.DocName);
-    SslHttpCli2.RcvdStream := TFileStream.Create(SslHttpCli2.DocName, fmCreate);
-end;
-
-procedure TForm1.SslHttpCli2DocEnd(Sender: TObject);
-var
-    FJSONObject: TJSONObject;
-    FList: TStringList;
-begin
-    if Assigned(SslHttpCli2.RcvdStream) then begin
-        SslHttpCli2.RcvdStream.Free;
-        SslHttpCli2.RcvdStream := nil;
-        FJSONObject := TJSONObject.Create;
-        FList := TStringList.Create;
-        FList.LoadFromFile(SslHttpCli2.DocName);
-        parseTurkceAltyaziJSON(FList.Text);
         FList.Free;
     end;
 end;
@@ -426,27 +356,16 @@ begin
 end;
 
 procedure TForm1.GetSubtitle1Click(Sender: TObject);
-function fixMovieName(FMovieName: string): string;
-begin
-    Result := StringReplace(Trim(FMovieName), ' ', '+', [rfReplaceAll]);
-end;
 begin
     if ListView1.Selected <> nil then
     begin
-        Inc(FTurkceAltyaziCount);
         FDownloadFolder := ExtractFilePath(ListView1.Selected.SubItems[6]);
-        SslHttpCli2.URL := 'https://turkcealtyazi.org/things_.php?t=99&term=' +
-            fixMovieName(ListView1.Selected.SubItems[0]) + '&_=' + IntToStr(CTime) +
-                IntToStr(FTurkceAltyaziCount);
-        addLog(SslHttpCli2.URL);
-        try
-            SslContext2.InitContext;
-        except
-            on E:Exception do
-                Exit;
+        with frmTurkceAltyaziMovieSelect do
+        begin
+            edtMovieName.Text := Trim(ListView1.Selected.SubItems[0]);
+            btnSearch.Click;
+            frmTurkceAltyaziMovieSelect.ShowModal;
         end;
-
-        SslHttpCli2.GetASync;
     end;
 end;
 
